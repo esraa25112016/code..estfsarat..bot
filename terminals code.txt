@@ -1,2 +1,4 @@
 python bot_final.py   (boot code)
+python telegram_bot_ready_with_schedule.py   (scaduale auto)
 
+python broadcast_fixed.py  (fixed scadual)
