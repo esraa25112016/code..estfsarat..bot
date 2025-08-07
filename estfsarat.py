@@ -473,25 +473,42 @@ async def custom_broadcast_execute(update:Update, context:ContextTypes.DEFAULT_T
         idx = int(scope.split("_")[1]) - 1
         gate_filter = GATES_LIST[idx]
 
-    for rec in SUB_SHEET.get_all_records():
+    records = SUB_SHEET.get_all_records()
+    logging.info(f"عدد المشتركين في الشيت: {len(records)}")
+
+    for rec in records:
         uid  = rec.get("Telegram ID")
         name = rec.get("الاسم")
+        logging.info(f"معالجة: {name} - {uid}")
         if not uid or not name:
+            logging.warning(f"تجاهل {name} بسبب عدم وجود UID أو اسم.")
             continue
+
+        # محاولة تنظيف uid من فراغات وحروف غير مرئية
+        uid_str = str(uid).strip()
+        if not uid_str.isdigit():
+            logging.warning(f"تجاهل {name} بسبب UID غير صالح: {uid_str}")
+            continue
+
         if gate_filter and rec.get(gate_filter, "").strip() != "تم":
+            logging.info(f"تجاهل {name} لعدم تحقق شرط الباب {gate_filter}")
             continue
+
         text = tpl.replace("(اسم الطالب)", name)
         try:
-            await context.bot.send_message(int(uid), text)
+            await context.bot.send_message(int(uid_str), text)
             sent += 1
+            logging.info(f"تم الإرسال لـ: {name} ({uid_str})")
+            await asyncio.sleep(0.5)  # تأخير نصف ثانية لتجنب الحظر
         except Exception as e:
-            logging.error(f"Error sending broadcast to {uid}: {e}")
+            logging.error(f"خطأ في الإرسال لـ {name} - {uid_str}: {e}")
             continue
 
     await q.edit_message_text(f"✅ أرسل {sent} رسالة.")
     context.user_data.pop('broadcast_scope', None)
     context.user_data.pop('broadcast_msg', None)
     return ConversationHandler.END
+
 
 custom_broadcast_conv = ConversationHandler(
     entry_points=[CallbackQueryHandler(custom_broadcast_choice, pattern="^custom_broadcast$")],
